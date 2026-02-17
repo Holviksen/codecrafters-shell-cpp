@@ -6,7 +6,7 @@ int main() {
   std::cout << std::unitbuf << std::flush;
   std::cerr << std::unitbuf << std::flush;
 
-  // TODO: Uncomment the code below to pass the first stage
+  
   while(true){
 	  std::cout << "$ " << std::flush;
 	  std::string input;
