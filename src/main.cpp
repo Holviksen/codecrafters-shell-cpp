@@ -16,6 +16,12 @@ int main() {
 		  input.erase(0, 5);
 		  std::cout << input<<'\n';
 	  }
+	  else if (input.substr(0, 4) == "type") {
+		  input.erase(0, 5);
+		  if (input == "echo" || input == "exit") {
+			  std::cout << input << " is a shell builtin\n";
+		  }
+	  }
 	  else {
 		  std::cout << input << ": command not found\n";
 	  }
