@@ -7,9 +7,11 @@ int main() {
   std::cerr << std::unitbuf << std::flush;
 
   // TODO: Uncomment the code below to pass the first stage
-  std::cout << "$ " << std::flush;
-  std::string input;
-  std::getline(std::cin, input);
-  std::cout << input << ": command not found\n";
+  while(true){
+	  std::cout << "$ " << std::flush;
+	  std::string input;
+	  std::getline(std::cin, input);
+	  std::cout << input << ": command not found\n";
+  }
   
 }
