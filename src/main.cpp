@@ -13,6 +13,7 @@ int main() {
 	  std::getline(std::cin, input);
 	  if (input == "exit") break;
 	  if (input.substr(0, 4) == "echo") {
+		  input.erase(0, 5);
 		  std::cout << input<<'\n';
 	  }
 	  else {
