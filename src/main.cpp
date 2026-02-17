@@ -22,7 +22,7 @@ int main() {
 			  std::cout << input << " is a shell builtin\n";
 		  }
 		  else {
-			  std::cout << input << ": command not found\n";
+			  std::cout << input << ": not found\n";
 		  }
 	  }
 	  else {
