@@ -18,7 +18,7 @@ int main() {
 	  }
 	  else if (input.substr(0, 4) == "type") {
 		  input.erase(0, 5);
-		  if (input == "echo" || input == "exit") {
+		  if (input == "echo" || input == "exit" || input == "type") {
 			  std::cout << input << " is a shell builtin\n";
 		  }
 	  }
