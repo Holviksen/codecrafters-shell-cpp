@@ -105,7 +105,7 @@ void REPL(std::vector<std::string> &command_buffer){
 }
 
 bool is_builtin(const std::string& s) {
-	return s == "echo" || s == "exit" || s == "type";
+	return s == "echo" || s == "exit" || s == "type" || s == "pwd";
 }
 
 bool is_exec(const std::string &s, fs::path &candidate){
