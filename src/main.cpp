@@ -5,6 +5,13 @@
 #include <sstream>
 #include <cstdlib>
 
+#if defined(_WIN32)
+    #include <windows.h>
+#else
+    #include <unistd.h>
+    #include <sys/wait.h>
+#endif
+
 namespace fs = std::filesystem; 
 
 
@@ -20,6 +27,7 @@ const char PATH_DELIMITER = ':';
 
 bool is_builtin(const std::string& s);
 bool is_exec(const std::string &s, fs::path &candidate);
+bool execute_command(const std::vector<std::string>& args);
 
 void REPL(std::vector<std::string> &command_buffer);
 void tokenize_input(const std::string &input, std::vector<std::string> &command_buffer);
@@ -82,11 +90,7 @@ void REPL(std::vector<std::string> &command_buffer){
 			}
 		}
 		else if(is_exec(command_buffer[0], path)){
-			std::string command;
-    		for (auto& s : command_buffer){
-        		command += s + " ";
-    		}
-    		std::system(command.c_str());
+			execute_command(command_buffer);
 		}
 		else{
 			std::cout << command_buffer[0] << ": command not found\n";
@@ -130,4 +134,70 @@ void tokenize_input(const std::string &input, std::vector<std::string> &command_
 	while (iss >> command) {
         command_buffer.push_back(command);
     }
+}
+
+bool execute_command(const std::vector<std::string>& args) {
+    if (args.empty()) return false;
+
+#if defined(_WIN32)
+
+    std::string commandLine;
+    for (const auto& arg : args) {
+        commandLine += "\"" + arg + "\" ";
+    }
+
+    _STARTUPINFOA si = { sizeof(si) };
+    _PROCESS_INFORMATION pi;
+
+    int success = CreateProcessA(
+        NULL,
+        commandLine.data(),
+        NULL,
+        NULL,
+        TRUE,
+        0,
+        NULL,
+        NULL,
+        &si,
+        &pi
+    ); 
+
+    if (!success) {
+        std::cerr << "CreateProcess failed\n";
+        return false;
+    }
+
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    return true;
+
+#else
+
+    pid_t pid = fork();
+
+    if (pid == 0) {
+        // Child
+        std::vector<char*> c_args;
+        for (const auto& arg : args)
+            c_args.push_back(const_cast<char*>(arg.c_str()));
+        c_args.push_back(nullptr);
+
+        execvp(c_args[0], c_args.data());
+
+        perror("execvp failed");
+        exit(1);
+    }
+    else if (pid > 0) {
+        // Parent
+        int status;
+        waitpid(pid, &status, 0);
+        return true;
+    }
+    else {
+        perror("fork failed");
+        return false;
+    }
+
+#endif
 }
