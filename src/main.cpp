@@ -31,6 +31,7 @@ bool execute_command(const std::vector<std::string>& args);
 
 void REPL(std::vector<std::string> &command_buffer);
 void tokenize_input(const std::string &input, std::vector<std::string> &command_buffer);
+void change_dir(const fs::path &path);
 
 std::vector<fs::path>PATH;
 
@@ -92,6 +93,9 @@ void REPL(std::vector<std::string> &command_buffer){
 			else{
 				std::cout << command_buffer[1] << ": not found\n";
 			}
+		}
+		else if(command_buffer[0] == "cd"){
+			change_dir(command_buffer[1]);
 		}
 		else if(is_exec(command_buffer[0], path)){
 			execute_command(command_buffer);
@@ -204,4 +208,15 @@ bool execute_command(const std::vector<std::string>& args) {
     }
 
 #endif
+}
+
+
+void change_dir(const std::string &s){
+	fs::path path = s;
+	if(fs::exists(path) && fs::is_directory(path)){
+		fs::current_path(path);
+	}
+	else{
+		std::cout<<"cd: "<<path<<": No such file or directory"<<std::endl;
+	}
 }
