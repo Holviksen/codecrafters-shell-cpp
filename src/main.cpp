@@ -217,6 +217,6 @@ void change_dir(const std::string &s){
 		fs::current_path(path);
 	}
 	else{
-		std::cout<<"cd: "<<path<<": No such file or directory"<<std::endl;
+		std::cout<<"cd: "<<path.string()<<": No such file or directory"<<std::endl;
 	}
 }
