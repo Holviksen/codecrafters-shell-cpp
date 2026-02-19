@@ -81,15 +81,15 @@ bool is_builtin(const std::string& s) {
 }
 
 bool is_exec(const std::string& s){
-	for(int i = 0; i < PATH.size(); i++){
-		for (const auto& entry : fs::recursive_directory_iterator(PATH[i])) {
-        	if (entry.is_regular_file() && entry.path().filename() == s) {
-				std::cout <<s<< " is " << entry.path().string()   << std::endl;
-            	return true;
-			}
-		}
-	}
-	return false;
+    for(const auto& dir : PATH){
+        fs::path candidate = dir / s;
+        // Check if the file exists and is regular
+        if(fs::exists(candidate) && fs::is_regular_file(candidate)){
+            std::cout << s << " is " << candidate.string() << std::endl;
+            return true;
+        }
+    }
+    return false;
 }
 
 void tokenize_input(const std::string &input, std::vector<std::string> &command_buffer){
