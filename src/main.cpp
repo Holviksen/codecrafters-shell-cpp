@@ -76,7 +76,7 @@ void REPL(std::vector<std::string> &command_buffer){
 			std::cout<<std::endl;
 		}
 		else if(command_buffer[0] == "pwd"){
-			fs::path currentPath = fs::current_path();
+			std::string currentPath = fs::current_path().string();
 			std::cout<<currentPath<<std::endl;
 		}
 		else if(command_buffer[0] == "type"){
