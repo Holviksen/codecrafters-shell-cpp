@@ -31,7 +31,7 @@ bool execute_command(const std::vector<std::string>& args);
 
 void REPL(std::vector<std::string> &command_buffer);
 void tokenize_input(const std::string &input, std::vector<std::string> &command_buffer);
-void change_dir(const fs::path &path);
+void change_dir(const std::string &s);
 
 std::vector<fs::path>PATH;
 
