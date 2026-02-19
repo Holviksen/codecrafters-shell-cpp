@@ -3,6 +3,7 @@
 #include <vector>
 #include <filesystem>
 #include <sstream>
+#include <cstdlib>
 
 namespace fs = std::filesystem; 
 
@@ -18,7 +19,7 @@ const char PATH_DELIMITER = ':';
 
 
 bool is_builtin(const std::string& s);
-bool is_exec(const std::string& s);
+bool is_exec(const std::string &s, fs::path &candidate);
 
 void REPL(std::vector<std::string> &command_buffer);
 void tokenize_input(const std::string &input, std::vector<std::string> &command_buffer);
@@ -26,7 +27,7 @@ void tokenize_input(const std::string &input, std::vector<std::string> &command_
 std::vector<fs::path>PATH;
 
 int main() {
-	std::vector<std::string> command_buffer;
+	std::vector<std::string> input_buffer;
 
 	const char* path = getenv("PATH");
 	if (path != nullptr) {
@@ -43,7 +44,9 @@ int main() {
   std::cerr << std::unitbuf << std::flush;
 
   
-  REPL(command_buffer);
+  REPL(input_buffer);
+
+  return 0;
   
 }
 
@@ -51,8 +54,12 @@ void REPL(std::vector<std::string> &command_buffer){
 	while(true){
 		std::cout << "$ " << std::flush;
 	  	std::string input;
+		fs::path path;
 	  	std::getline(std::cin, input);
 		tokenize_input(input, command_buffer);
+		if (command_buffer.empty()) {
+    		continue;
+		}
 	  	if(command_buffer[0] == "exit") break;
 		else if(command_buffer[0] == "echo"){
 			for(int i = 1; i < command_buffer.size(); i++){
@@ -61,12 +68,25 @@ void REPL(std::vector<std::string> &command_buffer){
 			std::cout<<std::endl;
 		}
 		else if(command_buffer[0] == "type"){
-			if (is_builtin(command_buffer[1])) {
+			if (command_buffer.size() < 2) {
+        		std::cout << "type: missing argument\n";
+    		}
+			else if (is_builtin(command_buffer[1])) {
 			  	std::cout << command_buffer[1] << " is a shell builtin\n";
 		  	}
-			else if(!is_exec(command_buffer[1])){
+			else if(is_exec(command_buffer[1], path)){
+				std::cout << command_buffer[1] << " is " << path.string() << std::endl;
+			}
+			else{
 				std::cout << command_buffer[1] << ": not found\n";
 			}
+		}
+		else if(is_exec(command_buffer[0], path)){
+			std::string command;
+    		for (auto& s : command_buffer){
+        		command += s + " ";
+    		}
+    		std::system(command.c_str());
 		}
 		else{
 			std::cout << command_buffer[0] << ": command not found\n";
@@ -80,14 +100,13 @@ bool is_builtin(const std::string& s) {
 	return s == "echo" || s == "exit" || s == "type";
 }
 
-bool is_exec(const std::string& s){
+bool is_exec(const std::string &s, fs::path &candidate){
     for(const auto& dir : PATH){
-        fs::path candidate = dir / s;
+        candidate = dir / s;
         if(fs::exists(candidate) && fs::is_regular_file(candidate)){
 			#if defined(_WIN32)
             	std::string ext = candidate.extension().string();
            	 	if(ext == ".exe" || ext == ".bat" || ext == ".cmd") {
-                	std::cout << s << " is " << candidate.string() << std::endl;
                 	return true;
             	}
 			#elif defined(__unix__) || defined(__APPLE__)
@@ -95,11 +114,9 @@ bool is_exec(const std::string& s){
             	if((p & fs::perms::owner_exec) != fs::perms::none ||
                	   (p & fs::perms::group_exec) != fs::perms::none ||
                    (p & fs::perms::others_exec) != fs::perms::none){
-					std::cout << s << " is " << candidate.string() << std::endl;
                 	return true;
 				   }
 			#else
-            	std::cout << s << " is " << candidate.string() << std::endl;
             	return true;
 			#endif
         }
