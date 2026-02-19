@@ -75,6 +75,10 @@ void REPL(std::vector<std::string> &command_buffer){
 			}
 			std::cout<<std::endl;
 		}
+		else if(command_buffer[0] == "pwd"){
+			fs::path currentPath = fs::current_path();
+			std::cout<<currentPath<<std::endl;
+		}
 		else if(command_buffer[0] == "type"){
 			if (command_buffer.size() < 2) {
         		std::cout << "type: missing argument\n";
@@ -146,8 +150,8 @@ bool execute_command(const std::vector<std::string>& args) {
         commandLine += "\"" + arg + "\" ";
     }
 
-    _STARTUPINFOA si = { sizeof(si) };
-    _PROCESS_INFORMATION pi;
+    STARTUPINFOA si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
 
     int success = CreateProcessA(
         NULL,
