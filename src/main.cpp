@@ -84,7 +84,7 @@ bool is_exec(const std::string& s){
 	for(int i = 0; i < PATH.size(); i++){
 		for (const auto& entry : fs::recursive_directory_iterator(PATH[i])) {
         	if (entry.is_regular_file() && entry.path().filename() == s) {
-				std::cout <<s<< " is " << entry.path() << std::endl;
+				std::cout <<s<< " is " << entry.path().string()   << std::endl;
             	return true;
 			}
 		}
