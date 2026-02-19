@@ -12,9 +12,6 @@
     #include <sys/wait.h>
 #endif
 
-namespace fs = std::filesystem; 
-
-
 #if defined(_WIN32)
 const char PATH_DELIMITER = ';';
 #elif defined(__linux__)
@@ -23,7 +20,13 @@ const char PATH_DELIMITER = ':';
 const char PATH_DELIMITER = ':';
 #endif
 
+#if defined(_WIN32)
+    const char* home_var = "USERPROFILE"; // For Windows systems
+#else
+    const char* home_var = "HOME"; // For Unix-like systems (Linux, macOS, etc.)
+#endif
 
+namespace fs = std::filesystem; 
 
 bool is_builtin(const std::string& s);
 bool is_exec(const std::string &s, fs::path &candidate);
@@ -95,7 +98,13 @@ void REPL(std::vector<std::string> &command_buffer){
 			}
 		}
 		else if(command_buffer[0] == "cd"){
-			change_dir(command_buffer[1]);
+			if(command_buffer[1] == "~"){
+				const char* homeDir = std::getenv(home_var);
+				change_dir(homeDir);
+			}
+			else{
+				change_dir(command_buffer[1]);
+			}
 		}
 		else if(is_exec(command_buffer[0], path)){
 			execute_command(command_buffer);
