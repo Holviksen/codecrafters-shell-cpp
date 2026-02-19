@@ -64,8 +64,8 @@ void REPL(std::vector<std::string> &command_buffer){
 			if (is_builtin(command_buffer[1])) {
 			  	std::cout << command_buffer[1] << " is a shell builtin\n";
 		  	}
-			else if(!is_exec(input)){
-				std::cout << input << ": not found\n";
+			else if(!is_exec(command_buffer[1])){
+				std::cout << command_buffer[1] << ": not found\n";
 			}
 		}
 		else{
