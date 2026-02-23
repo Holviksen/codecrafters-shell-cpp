@@ -114,24 +114,18 @@ bool is_exec(const std::string &s, fs::path &candidate){
 void tokenize_input(const std::string &input, std::vector<std::string> &command_buffer){
 	std::string token;
     bool in_single_quotes = false;
-    bool in_dobule_quotes = false;
+    bool in_double_quotes = false;
 
     for (size_t i = 0; i < input.size(); ++i) {
         char c = input[i];
 
-        if (c == '\'' ) {
+        if (c == '\'' && !in_double_quotes) {
             in_single_quotes = !in_single_quotes;
         }
-        else if(c == '\"'){
-            in_dobule_quotes = !in_dobule_quotes;
+        else if (c == '\"' && !in_single_quotes) {
+            in_double_quotes = !in_double_quotes;
         }
-        else if (std::isspace(c) && !in_single_quotes) {
-            if (!token.empty()) {
-                command_buffer.push_back(token);
-                token.clear();
-            }
-        }
-        else if (std::isspace(c) && !in_dobule_quotes) {
+        else if (std::isspace(c) && !in_single_quotes && !in_double_quotes) {
             if (!token.empty()) {
                 command_buffer.push_back(token);
                 token.clear();
