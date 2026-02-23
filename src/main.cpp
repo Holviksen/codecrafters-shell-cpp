@@ -121,10 +121,10 @@ void tokenize_input(const std::string &input, std::vector<std::string> &command_
     for (size_t i = 0; i < input.size(); ++i) {
         char c = input[i];
 
-        if (c == '\'' && !in_double_quotes && !backslash_esc) {
+        if (c == '\'' && !in_double_quotes) {
             in_single_quotes = !in_single_quotes;
         }
-        else if (c == '\"' && !in_single_quotes && !backslash_esc) {
+        else if (c == '\"' && !in_single_quotes) {
             in_double_quotes = !in_double_quotes;
         }
         else if (c == '\\' && !in_single_quotes) {
