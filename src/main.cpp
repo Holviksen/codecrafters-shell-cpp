@@ -115,7 +115,6 @@ void tokenize_input(const std::string &input, std::vector<std::string> &command_
 	std::string token;
     bool in_single_quotes = false;
     bool in_double_quotes = false;
-    bool backslash_esc = false;
 
     
 
@@ -128,12 +127,14 @@ void tokenize_input(const std::string &input, std::vector<std::string> &command_
         else if (c == '\"' && !in_single_quotes && !backslash_esc) {
             in_double_quotes = !in_double_quotes;
         }
-        else if(c == '\\'){
-            backslash_esc = true;
-        }
-        else if(backslash_esc){
-            token += c;
-            backslash_esc = false;
+        else if (c == '\\' && !in_single_quotes) {
+            if (i + 1 < input.size()) {
+                token += input[i + 1];
+                i++; 
+            } 
+            else {
+                token += '\\';
+            }
         }
         else if (std::isspace(c) && !in_single_quotes && !in_double_quotes) {
             if (!token.empty()) {
