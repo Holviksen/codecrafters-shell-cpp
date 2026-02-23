@@ -114,7 +114,7 @@ bool is_exec(const std::string &s, fs::path &candidate){
 void tokenize_input(const std::string &input, std::vector<std::string> &command_buffer){
 	std::istringstream iss(input);
 	std::string command;
-	while (iss >> command) {
+	while (std::getline(iss, command,'\'')) {
         command_buffer.push_back(command);
     }
 }
