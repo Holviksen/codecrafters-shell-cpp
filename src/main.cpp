@@ -115,15 +115,25 @@ void tokenize_input(const std::string &input, std::vector<std::string> &command_
 	std::string token;
     bool in_single_quotes = false;
     bool in_double_quotes = false;
+    bool backslash_esc = false;
+
+    
 
     for (size_t i = 0; i < input.size(); ++i) {
         char c = input[i];
 
-        if (c == '\'' && !in_double_quotes) {
+        if (c == '\'' && !in_double_quotes && !backslash_esc) {
             in_single_quotes = !in_single_quotes;
         }
-        else if (c == '\"' && !in_single_quotes) {
+        else if (c == '\"' && !in_single_quotes && !backslash_esc) {
             in_double_quotes = !in_double_quotes;
+        }
+        else if(c == '\\'){
+            backslash_esc = true;
+        }
+        else if(backslash_esc){
+            token += c;
+            backslash_esc = false;
         }
         else if (std::isspace(c) && !in_single_quotes && !in_double_quotes) {
             if (!token.empty()) {
