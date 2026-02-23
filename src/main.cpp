@@ -4,39 +4,36 @@
 #include <filesystem>
 #include <sstream>
 #include <cstdlib>
+#include <unordered_map>
+#include <functional>
 
 #if defined(_WIN32)
     #include <windows.h>
+	const char PATH_DELIMITER = ';';
+	const char* home_var = "USERPROFILE"; 
 #else
     #include <unistd.h>
     #include <sys/wait.h>
-#endif
-
-#if defined(_WIN32)
-const char PATH_DELIMITER = ';';
-#elif defined(__linux__)
-const char PATH_DELIMITER = ':';
-#else
-const char PATH_DELIMITER = ':';
-#endif
-
-#if defined(_WIN32)
-    const char* home_var = "USERPROFILE"; // For Windows systems
-#else
-    const char* home_var = "HOME"; // For Unix-like systems (Linux, macOS, etc.)
+	const char PATH_DELIMITER = ':';
+	const char* home_var = "HOME";
 #endif
 
 namespace fs = std::filesystem; 
 
-bool is_builtin(const std::string& s);
+typedef std::function<void(const std::vector<std::string>&)> commandHandler;
+
 bool is_exec(const std::string &s, fs::path &candidate);
 bool execute_command(const std::vector<std::string>& args);
 
 void REPL(std::vector<std::string> &command_buffer);
+void init_builtins();
 void tokenize_input(const std::string &input, std::vector<std::string> &command_buffer);
 void change_dir(const std::string &s);
 
 std::vector<fs::path>PATH;
+std::unordered_map<std::string, commandHandler>BUILTINS;
+
+
 
 int main() {
 	std::vector<std::string> input_buffer;
@@ -55,7 +52,7 @@ int main() {
   std::cout << std::unitbuf << std::flush;
   std::cerr << std::unitbuf << std::flush;
 
-  
+  init_builtins();
   REPL(input_buffer);
 
   return 0;
@@ -64,62 +61,31 @@ int main() {
 
 void REPL(std::vector<std::string> &command_buffer){
 	while(true){
-		std::cout << "$ " << std::flush;
-	  	std::string input;
-		fs::path path;
-	  	std::getline(std::cin, input);
-		tokenize_input(input, command_buffer);
-		if (command_buffer.empty()) {
-    		continue;
-		}
-	  	if(command_buffer[0] == "exit") break;
-		else if(command_buffer[0] == "echo"){
-			for(int i = 1; i < command_buffer.size(); i++){
-				std::cout << command_buffer[i]<<" ";
-			}
-			std::cout<<std::endl;
-		}
-		else if(command_buffer[0] == "pwd"){
-			std::string currentPath = fs::current_path().string();
-			std::cout<<currentPath<<std::endl;
-		}
-		else if(command_buffer[0] == "type"){
-			if (command_buffer.size() < 2) {
-        		std::cout << "type: missing argument\n";
-    		}
-			else if (is_builtin(command_buffer[1])) {
-			  	std::cout << command_buffer[1] << " is a shell builtin\n";
-		  	}
-			else if(is_exec(command_buffer[1], path)){
-				std::cout << command_buffer[1] << " is " << path.string() << std::endl;
-			}
-			else{
-				std::cout << command_buffer[1] << ": not found\n";
-			}
-		}
-		else if(command_buffer[0] == "cd"){
-			if(command_buffer[1] == "~"){
-				const char* homeDir = std::getenv(home_var);
-				change_dir(homeDir);
-			}
-			else{
-				change_dir(command_buffer[1]);
-			}
-		}
-		else if(is_exec(command_buffer[0], path)){
-			execute_command(command_buffer);
-		}
-		else{
-			std::cout << command_buffer[0] << ": command not found\n";
-		}
+		 std::cout << "$ " << std::flush;
+
+        std::string input;
+        std::getline(std::cin, input);
+
+        tokenize_input(input, command_buffer);
+        if (command_buffer.empty()) continue;
+
+        auto it = BUILTINS.find(command_buffer[0]);
+        if (it != BUILTINS.end()) {
+            it->second(command_buffer);
+        }
+        else {
+            fs::path path;
+            if (is_exec(command_buffer[0], path))
+                execute_command(command_buffer);
+            else
+                std::cout << command_buffer[0] << ": command not found\n";
+        }
+
 		
 		command_buffer.clear();
 	}
 }
 
-bool is_builtin(const std::string& s) {
-	return s == "echo" || s == "exit" || s == "type" || s == "pwd";
-}
 
 bool is_exec(const std::string &s, fs::path &candidate){
     for(const auto& dir : PATH){
@@ -228,4 +194,48 @@ void change_dir(const std::string &s){
 	else{
 		std::cout<<"cd: "<<path.string()<<": No such file or directory"<<std::endl;
 	}
+}
+
+void init_builtins(){
+	BUILTINS["exit"] = [] (const std::vector<std::string>&){
+		std::exit(0);
+	};
+
+	BUILTINS["echo"] = [](const std::vector<std::string>& args) {
+        for (size_t i = 1; i < args.size(); i++){
+			std::cout << args[i] << " ";
+		}
+        std::cout << std::endl;
+    };
+
+    BUILTINS["pwd"] = [](const std::vector<std::string>&) {
+        std::cout << fs::current_path() << "\n";
+    };
+
+    BUILTINS["cd"] = [](const std::vector<std::string>& args) {
+        if (args.size() < 2 || args[1] == "~") {
+            const char* home = std::getenv(home_var);
+            change_dir(home ? home : "");
+        } else {
+            change_dir(args[1]);
+        }
+    };
+
+    BUILTINS["type"] = [](const std::vector<std::string>& args) {
+        if (args.size() < 2) {
+            std::cout << "type: missing argument"<< std::endl;
+            return;
+        }
+
+        if (BUILTINS.find(args[1]) != BUILTINS.end()) {
+            std::cout << args[1] << " is a shell builtin"<< std::endl;
+            return;
+        }
+
+        fs::path path;
+        if (is_exec(args[1], path))
+            std::cout << args[1] << " is " << path << std::endl;
+        else
+            std::cout << args[1] << ": not found"<< std::endl;
+    };
 }
