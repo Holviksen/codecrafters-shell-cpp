@@ -227,7 +227,7 @@ void init_builtins(){
     };
 
     BUILTINS["pwd"] = [](const std::vector<std::string>&) {
-        std::cout << fs::current_path() << "\n";
+        std::cout << fs::current_path().string() << "\n";
     };
 
     BUILTINS["cd"] = [](const std::vector<std::string>& args) {
@@ -252,7 +252,7 @@ void init_builtins(){
 
         fs::path path;
         if (is_exec(args[1], path))
-            std::cout << args[1] << " is " << path << std::endl;
+            std::cout << args[1] << " is " << path.string() << std::endl;
         else
             std::cout << args[1] << ": not found"<< std::endl;
     };
