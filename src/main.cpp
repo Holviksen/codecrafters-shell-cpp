@@ -1,23 +1,13 @@
-/*Right now your shell is:
-
-Tokenize → Execute immediately
-
-To support operators properly, you must change it to:
-
-Tokenize → Parse → Build Execution Plan → Execute Plan
-
-This is how real shells like Bash work internally.
-
-You don’t need a full AST, but at least structured parsing.*/
-
 #include <iostream>
 #include <string>
 #include <vector>
 #include <filesystem>
 #include <sstream>
+#include <fstream>
 #include <cstdlib>
 #include <unordered_map>
 #include <functional>
+#include <algorithm>
 
 #if defined(_WIN32)
     #include <windows.h>
@@ -39,11 +29,13 @@ bool execute_command(const std::vector<std::string>& args);
 
 void REPL(std::vector<std::string> &command_buffer);
 void init_builtins();
+void init_operators();
 void tokenize_input(const std::string &input, std::vector<std::string> &command_buffer);
 void change_dir(const std::string &s);
 
 std::vector<fs::path>PATH;
 std::unordered_map<std::string, commandHandler>BUILTINS;
+std::unordered_map<std::string, commandHandler>OPERATORS;
 
 
 
@@ -65,6 +57,7 @@ int main() {
   std::cerr << std::unitbuf << std::flush;
 
   init_builtins();
+  init_operators();
   REPL(input_buffer);
 
   return 0;
@@ -73,13 +66,22 @@ int main() {
 
 void REPL(std::vector<std::string> &command_buffer){
 	while(true){
-		 std::cout << "$ " << std::flush;
+		std::cout << "$ " << std::flush;
 
         std::string input;
         std::getline(std::cin, input);
 
         tokenize_input(input, command_buffer);
         if (command_buffer.empty()) continue;
+
+        for (size_t i = 0; i < command_buffer.size(); ++i) {
+            auto op = OPERATORS.find(command_buffer[i]);
+            if (op != OPERATORS.end()) {
+                 op->second(command_buffer);
+                command_buffer.clear();
+                return;
+            }
+        }
 
         auto it = BUILTINS.find(command_buffer[0]);
         if (it != BUILTINS.end()) {
@@ -133,6 +135,7 @@ void tokenize_input(const std::string &input, std::vector<std::string> &command_
     for (size_t i = 0; i < input.size(); ++i) {
         char c = input[i];
 
+
         if (c == '\'' && !in_double_quotes) {
             in_single_quotes = !in_single_quotes;
         }
@@ -167,7 +170,7 @@ void tokenize_input(const std::string &input, std::vector<std::string> &command_
 bool execute_command(const std::vector<std::string>& args) {
     if (args.empty()) return false;
 
-#if defined(_WIN32)
+    #if defined(_WIN32)
 
     std::string commandLine;
     for (const auto& arg : args) {
@@ -200,7 +203,7 @@ bool execute_command(const std::vector<std::string>& args) {
     CloseHandle(pi.hThread);
     return true;
 
-#else
+    #else
 
     pid_t pid = fork();
 
@@ -227,7 +230,7 @@ bool execute_command(const std::vector<std::string>& args) {
         return false;
     }
 
-#endif
+    #endif
 }
 
 
@@ -283,6 +286,59 @@ void init_builtins(){
         else
             std::cout << args[1] << ": not found"<< std::endl;
     };
+}
 
-    
+void init_operators(){
+    OPERATORS[">"] = [](const std::vector<std::string>& args){
+        size_t op_pos = 0;
+        for(size_t i = 0; i < args.size(); i++){
+            if(args[i] == ">" || args[i] == "1>"){
+                op_pos = i;
+                break;
+            }
+        }
+
+        if (op_pos + 1 >= args.size()) {
+            std::cout << "syntax error: no output file\n";
+            return;
+        }
+
+        fs::path file = args[op_pos + 1];
+
+        std::vector<std::string> cmd(args.begin(), args.begin() + op_pos);
+
+        if (cmd.empty()) {
+            std::cout << "syntax error: missing command\n";
+            return;
+        }
+
+        std::ofstream outfile(file);
+        if(!outfile){
+            std::cout << "cannot open file: " << file << "\n";
+            return;
+        }
+
+        std::streambuf* old_buf = std::cout.rdbuf();
+
+        
+        std::cout.rdbuf(outfile.rdbuf());
+
+        // Execute command
+        auto it = BUILTINS.find(cmd[0]);
+        if (it != BUILTINS.end()) {
+            it->second(cmd);
+        }
+        else {
+            fs::path path;
+            if (is_exec(cmd[0], path))
+                execute_command(cmd);
+            else
+                std::cout << cmd[0] << ": command not found\n";
+        }
+
+        // Restore stdout
+        std::cout.rdbuf(old_buf);
+    };
+
+    OPERATORS["1>"] = OPERATORS[">"];
 }
