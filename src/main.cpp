@@ -79,7 +79,7 @@ void REPL(std::vector<std::string> &command_buffer){
             if (op != OPERATORS.end()) {
                  op->second(command_buffer);
                 command_buffer.clear();
-                return;
+                continue;
             }
         }
 
