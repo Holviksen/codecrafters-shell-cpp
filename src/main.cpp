@@ -10,6 +10,7 @@
 #include <algorithm>
 
 #if defined(_WIN32)
+    #include <fcntl.h>
     #include <windows.h>
 	const char PATH_DELIMITER = ';';
 	const char* home_var = "USERPROFILE"; 
@@ -290,55 +291,118 @@ void init_builtins(){
 
 void init_operators(){
     OPERATORS[">"] = [](const std::vector<std::string>& args){
-        size_t op_pos = 0;
-        for(size_t i = 0; i < args.size(); i++){
-            if(args[i] == ">" || args[i] == "1>"){
-                op_pos = i;
-                break;
-            }
+
+    size_t op_pos = 0;
+    for(size_t i = 0; i < args.size(); i++){
+        if(args[i] == ">" || args[i] == "1>"){
+            op_pos = i;
+            break;
+        }
+    }
+
+    if (op_pos + 1 >= args.size()) {
+        std::cerr << "syntax error: no output file\n";
+        return;
+    }
+
+    fs::path file = args[op_pos + 1];
+    std::vector<std::string> cmd(args.begin(), args.begin() + op_pos);
+
+    if (cmd.empty()) {
+        std::cerr << "syntax error: missing command\n";
+        return;
+    }
+
+#if defined(__unix__) || defined(__APPLE__)
+
+    pid_t pid = fork();
+
+    if (pid == 0) {
+        int fd = open(file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd < 0) {
+            perror("open failed");
+            exit(1);
         }
 
-        if (op_pos + 1 >= args.size()) {
-            std::cout << "syntax error: no output file\n";
-            return;
-        }
+        dup2(fd, STDOUT_FILENO);
+        close(fd);
 
-        fs::path file = args[op_pos + 1];
+        std::vector<char*> c_args;
+        for (const auto& arg : cmd)
+            c_args.push_back(const_cast<char*>(arg.c_str()));
+        c_args.push_back(nullptr);
 
-        std::vector<std::string> cmd(args.begin(), args.begin() + op_pos);
+        execvp(c_args[0], c_args.data());
+        perror("execvp failed");
+        exit(1);
+    }
+    else if (pid > 0) {
+        waitpid(pid, nullptr, 0);
+    }
+    else {
+        perror("fork failed");
+    }
 
-        if (cmd.empty()) {
-            std::cout << "syntax error: missing command\n";
-            return;
-        }
+#else
+    std::string commandLine;
+    for (const auto& arg : cmd) {
+        commandLine += "\"" + arg + "\" ";
+    }
 
-        std::ofstream outfile(file);
-        if(!outfile){
-            std::cout << "cannot open file: " << file << "\n";
-            return;
-        }
+    // Create output file (overwrite like >)
+    HANDLE hFile = CreateFileA(
+        file.string().c_str(),
+        GENERIC_WRITE,
+        FILE_SHARE_READ,
+        NULL,
+        CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL
+    );
 
-        std::streambuf* old_buf = std::cout.rdbuf();
+    if (hFile == INVALID_HANDLE_VALUE) {
+        std::cerr << "cannot open file: " << file.string() << "\n";
+        return;
+    }
 
-        
-        std::cout.rdbuf(outfile.rdbuf());
+    // Make handle inheritable
+    SetHandleInformation(hFile, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
 
-        // Execute command
-        auto it = BUILTINS.find(cmd[0]);
-        if (it != BUILTINS.end()) {
-            it->second(cmd);
-        }
-        else {
-            fs::path path;
-            if (is_exec(cmd[0], path))
-                execute_command(cmd);
-            else
-                std::cout << cmd[0] << ": command not found\n";
-        }
+    STARTUPINFOA si{};
+    PROCESS_INFORMATION pi{};
+    si.cb = sizeof(si);
 
-        // Restore stdout
-        std::cout.rdbuf(old_buf);
-    };
+    si.dwFlags |= STARTF_USESTDHANDLES;
+    si.hStdOutput = hFile;
+    si.hStdError  = GetStdHandle(STD_ERROR_HANDLE);
+    si.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
+
+    BOOL success = CreateProcessA(
+        NULL,
+        commandLine.data(),
+        NULL,
+        NULL,
+        TRUE,   // inherit handles
+        0,
+        NULL,
+        NULL,
+        &si,
+        &pi
+    );
+
+    if (!success) {
+        std::cerr << "CreateProcess failed\n";
+        CloseHandle(hFile);
+        return;
+    }
+
+    WaitForSingleObject(pi.hProcess, INFINITE);
+
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    CloseHandle(hFile);
+#endif
+};
 
     OPERATORS["1>"] = OPERATORS[">"];
 }
