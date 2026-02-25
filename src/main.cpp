@@ -1,3 +1,15 @@
+/*Right now your shell is:
+
+Tokenize → Execute immediately
+
+To support operators properly, you must change it to:
+
+Tokenize → Parse → Build Execution Plan → Execute Plan
+
+This is how real shells like Bash work internally.
+
+You don’t need a full AST, but at least structured parsing.*/
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -271,4 +283,6 @@ void init_builtins(){
         else
             std::cout << args[1] << ": not found"<< std::endl;
     };
+
+    
 }
