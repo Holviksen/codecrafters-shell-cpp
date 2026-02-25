@@ -15,6 +15,8 @@
 	const char PATH_DELIMITER = ';';
 	const char* home_var = "USERPROFILE"; 
 #else
+    #include <fcntl.h>
+    #include <sys/stat.h> 
     #include <unistd.h>
     #include <sys/wait.h>
 	const char PATH_DELIMITER = ':';
